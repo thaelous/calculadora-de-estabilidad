@@ -9,6 +9,17 @@
     <meta property="og:description" content="Simulador físico de estabilidad de montacargas bajo normativas NOM-006-STPS y OSHA 1910.178." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- PWA Web App Manifest & Colors -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#84cc16" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Montacargas" />
+    <link rel="apple-touch-icon" href="/comgico.png" />
+    <link rel="icon" type="image/png" href="/comgico.png" />
+
     <!-- Google Fonts: Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,6 +27,21 @@
   </head>
   <body class="bg-slate-100 text-slate-800 antialiased overflow-hidden select-none">
     <div id="root"></div>
+
+    <!-- Registro del Service Worker para funcionamiento 100% Offline-First -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: './' })
+            .then((registration) => {
+              console.log('[PWA] Service Worker activo y registrado con scope:', registration.scope);
+            })
+            .catch((error) => {
+              console.warn('[PWA] Error al registrar Service Worker:', error);
+            });
+        });
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

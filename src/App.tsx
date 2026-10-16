@@ -10,6 +10,12 @@ const FORKLIFT_GEO = {
   forkliftCG_Y: 52     // altura CG máquina (cm)
 };
 
+// Interface para evento nativo de instalación PWA en Chromium/Android
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
 export default function App() {
   // ------------------------------------------
   // ESTADO DE CONFIGURACIÓN Y FÍSICA
@@ -40,6 +46,68 @@ export default function App() {
   const [speedKmh, setSpeedKmh] = useState<number>(0);
   const [deceleration, setDeceleration] = useState<number>(0.0);
   const [custBrakeType, setCustBrakeType] = useState<string>('normal');
+
+  // Estados de PWA (Instalación y Offline)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState<boolean>(false);
+  const [isIOS, setIsIOS] = useState<boolean>(false);
+  const [showIOSModal, setShowIOSModal] = useState<boolean>(false);
+  const [bannerDismissed, setBannerDismissed] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  // Detección de PWA, evento beforeinstallprompt y conectividad
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    setIsInstalled(isStandalone);
+
+    const ua = window.navigator.userAgent.toLowerCase();
+    setIsIOS(/iphone|ipad|ipod/.test(ua));
+
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+      setBannerDismissed(true);
+      console.log('[PWA] Aplicación instalada con éxito.');
+    };
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setIsInstalled(true);
+        setDeferredPrompt(null);
+        setBannerDismissed(true);
+      }
+    } else if (isIOS) {
+      setShowIOSModal(true);
+    }
+  };
 
   // Referencias a canvas
   const splashCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -693,16 +761,38 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            id="btnReset"
-            type="button"
-            onClick={handleReset}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border border-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer touch-manipulation"
-          >
-            <span>🔄</span>
-            <span className="hidden xs:inline">Restablecer</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            {!isInstalled && (deferredPrompt || isIOS) && (
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-lime-100 hover:bg-lime-200 active:bg-lime-300 text-lime-900 border border-lime-300 text-xs font-bold transition active:scale-95 cursor-pointer touch-manipulation shadow-2xs"
+                title="Instalar App en el dispositivo"
+              >
+                <span>📲</span>
+                <span className="hidden xs:inline">Instalar</span>
+              </button>
+            )}
+
+            <button
+              id="btnReset"
+              type="button"
+              onClick={handleReset}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border border-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer touch-manipulation"
+            >
+              <span>🔄</span>
+              <span className="hidden xs:inline">Restablecer</span>
+            </button>
+          </div>
         </header>
+
+        {/* Notificación Offline Mode */}
+        {!isOnline && (
+          <div className="bg-amber-500 text-white text-[11px] font-semibold text-center py-1 px-2 shadow-xs flex items-center justify-center gap-1.5 shrink-0 z-30">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span>Modo Offline — App 100% funcional sin conexión a internet</span>
+          </div>
+        )}
 
         {/* VISOR CANVAS 2D (Fijo y siempre visible ~28% en móvil para no encimar) */}
         <section className="h-[27dvh] sm:h-[30dvh] shrink-0 bg-slate-100 border-b border-slate-200 relative overflow-hidden">
@@ -1193,6 +1283,85 @@ export default function App() {
             )}
           </div>
         </main>
+
+        {/* Banner Flotante Discreto de Instalación PWA (Android / Chromium / Móvil) */}
+        {!isInstalled && !bannerDismissed && (deferredPrompt || isIOS) && (
+          <aside
+            aria-label="Instalación de aplicación móvil"
+            className="fixed bottom-4 inset-x-3 sm:inset-x-auto sm:right-4 z-40 bg-slate-900/95 backdrop-blur-md text-white px-3.5 py-2.5 rounded-xl shadow-2xl border border-lime-500/40 flex items-center justify-between gap-3 animate-fade-in"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-xl shrink-0">📲</span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold leading-tight text-white truncate">
+                  Instalar en mi celular
+                </p>
+                <p className="text-[10px] text-lime-400 font-medium leading-none mt-0.5 truncate">
+                  Funciona 100% sin internet (PWA)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="bg-lime-500 hover:bg-lime-600 active:scale-95 text-slate-950 font-extrabold text-xs px-3 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer"
+              >
+                Instalar
+              </button>
+              <button
+                type="button"
+                onClick={() => setBannerDismissed(true)}
+                className="text-slate-400 hover:text-white p-1 text-sm rounded transition cursor-pointer"
+                title="Cerrar aviso"
+              >
+                ✕
+              </button>
+            </div>
+          </aside>
+        )}
+
+        {/* Modal de guía paso a paso para iOS Safari */}
+        {showIOSModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl text-slate-800">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">📲</span>
+                  <h3 className="text-sm font-bold text-slate-900">Instalar en iPhone / iPad</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowIOSModal(false)}
+                  className="text-slate-400 hover:text-slate-700 text-sm font-bold p-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="mt-3 text-xs text-slate-600 leading-relaxed">
+                Para instalar esta aplicación en tu dispositivo Apple y usarla sin conexión:
+              </p>
+              <ol className="mt-2.5 space-y-2 text-xs text-slate-700">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-lime-700 bg-lime-100 rounded-full w-4 h-4 flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+                  <span>Toca el botón <strong>Compartir</strong> (ícono de caja con flecha arriba en Safari).</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-lime-700 bg-lime-100 rounded-full w-4 h-4 flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+                  <span>Desliza hacia abajo y pulsa <strong>"Agregar al inicio"</strong>.</span>
+                </li>
+              </ol>
+              <button
+                type="button"
+                onClick={() => setShowIOSModal(false)}
+                className="mt-4 w-full rounded-lg bg-lime-500 hover:bg-lime-600 text-slate-950 py-2 text-xs font-bold transition cursor-pointer"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

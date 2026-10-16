@@ -1,0 +1,39 @@
+{
+  "id": "./",
+  "name": "Estabilidad Montacargas - Comunicación Global",
+  "short_name": "Montacargas",
+  "description": "Calculadora de Estabilidad y Vuelco de Montacargas Hombre Sentado - NOM-006-STPS & OSHA 1910.178",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#84cc16",
+  "orientation": "portrait",
+  "categories": ["utilities", "education", "business"],
+  "icons": [
+    {
+      "src": "public/comgico.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "public/comgico.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/comgico.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/comgico.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
