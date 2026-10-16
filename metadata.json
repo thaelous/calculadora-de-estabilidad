@@ -1,0 +1,6 @@
+{
+  "name": "Estabilidad Montacargas",
+  "description": "Simulador físico de estabilidad de montacargas bajo normativas NOM-006-STPS y OSHA 1910.178.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
